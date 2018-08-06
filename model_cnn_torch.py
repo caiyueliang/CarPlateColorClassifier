@@ -18,6 +18,46 @@ from torch.utils import data
 import cv2
 
 
+# 图片加载类
+class MyDataset(data.Dataset):
+    def __init__(self, root_dir, label_file, img_size, transforms=None, is_train=False):
+        self.root_dir = root_dir
+        records_txt = common.read_data(label_file, 'r')
+        self.records = records_txt.split('\n')
+        self.img_size = img_size
+        self.is_train = is_train
+
+        # imgs = os.listdir(root)
+        # self.imgs = [os.path.join(root, img) for img in imgs]
+        # self.label_path = label_path
+        self.transforms = transforms
+
+    def __getitem__(self, index):
+        record = self.records[index]
+        str_list = record.split(" ")
+        img_file = os.path.join(self.root_dir, str_list[0])
+
+        img = Image.open(img_file)
+        old_size = img.size[0]
+
+        label = str_list[2:]
+        label = map(float, label)
+        label = np.array(label)
+
+        # if self.is_train:                                               # 训练模式，才做变换
+        #     img, label = self.RandomHorizontalFlip(img, label)          # 图片做随机水平翻转
+        #     self.show_img(img, label)
+
+        label = label * self.img_size / old_size
+        if self.transforms:
+            img = self.transforms(img)
+
+        return img, label, img_file
+
+    def __len__(self):
+        return len(self.records)
+
+
 class CNN(nn.Module):
     def __init__(self, num_classes=4):
         super(CNN, self).__init__()
@@ -29,7 +69,7 @@ class CNN(nn.Module):
         self.batch_3 = nn.BatchNorm2d(32)
         self.conv_3 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3)
 
-        self.dropout_1 = nn.Dropout(p=0.5)
+        self.dropout_1 = nn.Dropout(p=0.6)
 
         self.fc1 = nn.Linear(in_features=64*13*2, out_features=64)
         self.fc2 = nn.Linear(in_features=64, out_features=num_classes)
@@ -131,7 +171,7 @@ class ModuleTrain():
         # test_dataset = MyDataset(self.test_path, test_label, self.img_size, self.transform_test, is_train=False)
         train_dataset = ImageFolder(self.train_path, transform=self.transform_train)
         test_dataset = ImageFolder(self.test_path, transform=self.transform_test)
-        print(train_dataset.class_to_idx)
+        # print(train_dataset.class_to_idx)
 
         # Data Loader (Input Pipeline)
         self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
@@ -177,7 +217,6 @@ class ModuleTrain():
                 output = self.model(data)
 
                 loss = self.loss(output, label)
-
                 # if self.use_gpu:
                 #     loss = self.loss(output.type(torch.cuda.LongTensor), label.type(torch.cuda.LongTensor))
                 # else:
@@ -210,7 +249,7 @@ class ModuleTrain():
 
         self.save(self.model_file)
 
-    def test(self, show_img=False):
+    def test(self, show_info=False):
         total_count = 0.
         success_count = 0.
 
@@ -228,10 +267,15 @@ class ModuleTrain():
             # loss = self.loss(output, target)
             # test_loss += loss.item()
 
+            if show_info is True:
+                print('true_target', target)
+                print('  pre_label', label)
+
             for y, y_ in zip(target, label):
                 total_count += 1.
                 if y.item() == y_.item():
                     success_count += 1.
+
             # if show_img:
             #     for i in range(len(output[:, 1])):
             #         self.show_img(img_files[i], output[i].cpu().detach().numpy(), target[i].cpu().detach().numpy())
@@ -243,28 +287,10 @@ class ModuleTrain():
     def load(self, name):
         print('[Load model] %s ...' % name)
         self.model.load_state_dict(torch.load(name))
-        # self.model.load(name)
 
     def save(self, name):
         print('[Save model] %s ...' % name)
         torch.save(self.model.state_dict(), name)
-        # self.model.save(name)
-
-    def show_img(self, img_file, output, target):
-        print(img_file)
-        print(output)
-        print(target)
-
-        img = cv2.imread(img_file)
-        h, w, c = img.shape
-        for i in range(len(target)/2):
-            cv2.circle(img, (int(target[2*i]*h/self.img_size), int(target[2*i+1]*h/self.img_size)), 3, (0, 255, 0), -1)
-
-        for i in range(len(output)/2):
-            cv2.circle(img, (int(output[2*i]*h/self.img_size), int(output[2*i+1]*h/self.img_size)), 3, (0, 0, 255), -1)
-
-        cv2.imshow('show_img', img)
-        cv2.waitKey(0)
 
 
 if __name__ == '__main__':
@@ -294,16 +320,19 @@ if __name__ == '__main__':
     train_path = './Data/train'
     test_path = './Data/test'
 
-    # FILE_PATH = './Model/model_params.pkl'
-    # model = CNN(num_classes=3)
-    # model_train = ModuleTrain(train_path, test_path, FILE_PATH, num_classes=3, img_size=(118, 30), lr=1e-3)
+    FILE_PATH = './Model/cnn_params.pkl'
+    # FILE_PATH = './Model/cnn_params_best.pkl'
+    # FILE_PATH = './Model/cnn_params_100.pkl'
 
-    FILE_PATH = './Model/resnet18_params.pkl'
-    model = models.resnet18(num_classes=3)
-    model_train = ModuleTrain(train_path, test_path, FILE_PATH, model=model, batch_size=16, img_size=(224, 224), lr=1e-3)
+    model = CNN(num_classes=3)
+    model_train = ModuleTrain(train_path, test_path, FILE_PATH, num_classes=3, img_size=(118, 30), lr=1e-3)
+
+    # FILE_PATH = './Model/resnet18_params_99.10.pkl'
+    # model = models.resnet18(num_classes=3)
+    # model_train = ModuleTrain(train_path, test_path, FILE_PATH, model=model, batch_size=8, img_size=(224, 224), lr=1e-3)
 
     model_train.train(200, 60)
-    # model_train.test(show_img=True)
+    model_train.test(show_info=True)
 
 
 

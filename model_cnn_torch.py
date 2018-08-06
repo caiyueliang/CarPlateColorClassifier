@@ -69,7 +69,7 @@ class CNN(nn.Module):
         self.batch_3 = nn.BatchNorm2d(32)
         self.conv_3 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3)
 
-        self.dropout_1 = nn.Dropout(p=0.6)
+        self.dropout_1 = nn.Dropout(p=0.5)
 
         self.fc1 = nn.Linear(in_features=64*13*2, out_features=64)
         self.fc2 = nn.Linear(in_features=64, out_features=num_classes)
@@ -320,7 +320,7 @@ if __name__ == '__main__':
     train_path = './Data/train'
     test_path = './Data/test'
 
-    FILE_PATH = './Model/cnn_params.pkl'
+    FILE_PATH = './Model/cnn_params_100.pkl'
     # FILE_PATH = './Model/cnn_params_best.pkl'
     # FILE_PATH = './Model/cnn_params_100.pkl'
 
@@ -331,7 +331,7 @@ if __name__ == '__main__':
     # model = models.resnet18(num_classes=3)
     # model_train = ModuleTrain(train_path, test_path, FILE_PATH, model=model, batch_size=8, img_size=(224, 224), lr=1e-3)
 
-    model_train.train(200, 60)
+    # model_train.train(200, 60)
     model_train.test(show_info=True)
 
 

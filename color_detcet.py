@@ -198,6 +198,7 @@ class ModuleTrain():
                 self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
 
             print('================================================')
+            self.model.train()
             for batch_idx, (data, label) in enumerate(self.train_loader):
                 # label = label.view(-1, 1)
                 # print('label:', label)
@@ -254,6 +255,7 @@ class ModuleTrain():
         success_count = 0.
 
         # 测试集
+        self.model.eval()
         for data, target in self.test_loader:
             data, target = Variable(data), Variable(target)
 
@@ -318,7 +320,7 @@ if __name__ == '__main__':
 
     # ====================================================================================================
     train_path = './Data/train'
-    test_path = './Data/test'
+    test_path = './Data/train'
 
     FILE_PATH = './Model/cnn_params_100.pkl'
     # FILE_PATH = './Model/cnn_params_best.pkl'
@@ -331,8 +333,8 @@ if __name__ == '__main__':
     # model = models.resnet18(num_classes=3)
     # model_train = ModuleTrain(train_path, test_path, FILE_PATH, model=model, batch_size=8, img_size=(224, 224), lr=1e-3)
 
-    # model_train.train(200, 60)
-    model_train.test(show_info=True)
+    model_train.train(200, 60)
+    # model_train.test(show_info=True)
 
 
 
